@@ -1,0 +1,253 @@
+{
+  "name": "Fix Meeting Type: \"Controller\"",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4b614d9d-e158-44b9-bd88-b1a8e60224a3",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -680,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "outputFieldName": "today",
+        "options": {}
+      },
+      "id": "b1318234-8f7d-406c-862f-76559fdc1f52",
+      "name": "Today",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "addToDate",
+        "magnitude": "={{ $('Today').item.json.today }}",
+        "duration": -7,
+        "outputFieldName": "sevendayago",
+        "options": {}
+      },
+      "id": "6ca62902-8506-44a4-a310-161dc7ffa74b",
+      "name": "7 Days Ago",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/meetings/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer HUBSPOT_APP_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filters\": [\n    {\n      \"propertyName\": \"hubspot_team_id\",\n      \"operator\": \"EQ\",\n      \"value\": 8316195\n    },\n    {\n      \"propertyName\": \"hs_meeting_start_time\",\n      \"operator\": \"GTE\",\n      \"value\": \"{{ $('7 Days Ago').item.json.sevendayago }}\"\n    },\n    {\n      \"propertyName\": \"hs_meeting_start_time\",\n      \"operator\": \"LTE\",\n      \"value\": \"{{ $('Today').item.json.today }}\"\n    },\n    {\n      \"propertyName\": \"hs_activity_type\",\n      \"operator\": \"NOT_HAS_PROPERTY\"\n    }\n  ],\n  \"limit\": 200\n} ",
+        "options": {}
+      },
+      "id": "8ca4090c-3b04-4513-9b23-a8ec77a46d04",
+      "name": "Get Meetings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results",
+        "options": {}
+      },
+      "id": "9cf59882-7d0e-4fb1-9024-1003a50cb2a3",
+      "name": "Split Meetings",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        140,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "id",
+        "options": {}
+      },
+      "id": "b8404362-f95b-4bdd-a5d4-962f78557025",
+      "name": "Split IDs",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        360,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "9958fff4-b849-472c-a2bd-09337190f492",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        580,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.hubapi.com/crm/v3/objects/meetings/{{ $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer HUBSPOT_APP_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"properties\": {\n  \"hs_activity_type\": \"Controller\"\n  }\n}",
+        "options": {}
+      },
+      "id": "403637e3-5d43-48e8-a412-45b13d6eaac1",
+      "name": "Set Activity Type",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        540
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Today",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Today": {
+      "main": [
+        [
+          {
+            "node": "7 Days Ago",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7 Days Ago": {
+      "main": [
+        [
+          {
+            "node": "Get Meetings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Meetings": {
+      "main": [
+        [
+          {
+            "node": "Split Meetings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Meetings": {
+      "main": [
+        [
+          {
+            "node": "Split IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split IDs": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Set Activity Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Activity Type": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "50c5a1ae-5050-43d9-aff4-ab9e354a9630",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f35844c20bd7f8456f907e3b5a901af1cf08cec7fee985138953357fd244e5bd"
+  },
+  "id": "8wfpcf2cIbxBNIje",
+  "tags": []
+}
